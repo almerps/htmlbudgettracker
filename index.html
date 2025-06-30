@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Budget Tracker</title>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+    .income { color: green; }
+    .expense { color: red; }
+    input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+  </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h2>💰 Budget Tracker</h2>
+
+  <div id="authSection">
+    <button id="loginBtn">🔐 Login with Google</button>
+    <button id="logoutBtn" style="display:none;">🚪 Logout</button>
+  </div>
+
+  <div id="mainApp" style="display:none;">
+    <form id="entryForm">
+      <input id="desc" placeholder="Description" required />
+      <input id="amount" type="number" placeholder="Amount (+income, -expense)" required />
+      <select id="category" required>
+        <option value="">-- Choose Category --</option>
+        <option>Salary</option>
+        <option>Food</option>
+        <option>Transport</option>
+        <option>Shopping</option>
+        <option>Others</option>
+      </select>
+      <button type="submit">➕ Add Entry</button>
+    </form>
+
+    <h3>📅 Filter by Month:</h3>
+    <select id="monthFilter"></select>
+
+    <ul id="history"></ul>
+    <h3>📊 Total Balance: <span id="total">0</span></h3>
+
+    <h3>🧁 Pie Chart (By Category)</h3>
+    <canvas id="categoryChart" height="200"></canvas>
+
+    <h3>📈 Line Chart (Daily Totals)</h3>
+    <canvas id="lineChart" height="200"></canvas>
+  </div>
+
+  <script>
+    // Paste your Firebase config here
+	const firebaseConfig = {
+	  apiKey: "AIzaSyAXLjQptvknanK8CBKp7c23pIyeqZY_9ag",
+	  authDomain: "lazarius-ad2e6.firebaseapp.com",
+	  projectId: "lazarius-ad2e6",
+	  storageBucket: "lazarius-ad2e6.appspot.com",
+	  messagingSenderId: "615981652470",
+	  appId: "1:615981652470:web:fae653fc7d1e39e7e78fd7",
+	  measurementId: "G-XPSW6B6L5G"
+	};
+
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const entryForm = document.getElementById('entryForm');
+    const history = document.getElementById('history');
+    const totalDisplay = document.getElementById('total');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const mainApp = document.getElementById('mainApp');
+    const monthFilter = document.getElementById('monthFilter');
+
+    let userId = null;
+    let unsubscribe = null;
+    let pieChart = null;
+    let lineChart = null;
+
+    // Login
+    loginBtn.onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    };
+
+    logoutBtn.onclick = () => auth.signOut();
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        userId = user.uid;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        mainApp.style.display = 'block';
+        loadMonthFilter();
+        listenToTransactions();
+      } else {
+        mainApp.style.display = 'none';
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        if (unsubscribe) unsubscribe();
+      }
+    });
+
+    entryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const desc = document.getElementById("desc").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const category = document.getElementById("category").value;
+      if (!desc || isNaN(amount) || !category) return;
+      await db.collection("transactions").add({
+        userId,
+        desc,
+        amount,
+        category,
+        timestamp: new Date()
+      });
+      entryForm.reset();
+    });
+
+    function loadMonthFilter() {
+      const now = new Date();
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), i);
+        const value = `${d.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+        const text = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const option = new Option(text, value);
+        monthFilter.add(option);
+      }
+      monthFilter.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    monthFilter.addEventListener('change', () => {
+      if (unsubscribe) unsubscribe();
+      listenToTransactions();
+    });
+
+    function listenToTransactions() {
+      const [year, month] = monthFilter.value.split("-");
+      const start = new Date(year, month - 1);
+      const end = new Date(year, month);
+
+      unsubscribe = db.collection("transactions")
+        .where("userId", "==", userId)
+        .where("timestamp", ">=", start)
+        .where("timestamp", "<", end)
+        .orderBy("timestamp", "asc")
+        .onSnapshot(snapshot => {
+          history.innerHTML = "";
+          let total = 0;
+          const allData = [];
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            total += d.amount;
+            allData.push(d);
+            const li = document.createElement("li");
+            li.className = d.amount >= 0 ? "income" : "expense";
+            li.textContent = `${d.desc} (${d.category}): ${d.amount >= 0 ? '+' : ''}${d.amount}`;
+            history.appendChild(li);
+          });
+          totalDisplay.textContent = total.toLocaleString();
+          updateCategoryChart(allData);
+          updateLineChart(allData);
+        });
+    }
+
+    function updateCategoryChart(data) {
+      const categoryTotals = {};
+      data.forEach(({ category, amount }) => {
+        if (!categoryTotals[category]) categoryTotals[category] = 0;
+        categoryTotals[category] += amount;
+      });
+
+      const labels = Object.keys(categoryTotals);
+      const values = Object.values(categoryTotals);
+
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(document.getElementById("categoryChart"), {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: ['#4CAF50', '#F44336', '#2196F3', '#FF9800', '#9C27B0']
+          }]
+        }
+      });
+    }
+
+    function updateLineChart(data) {
+      const dailyTotals = {};
+      data.forEach(({ timestamp, amount }) => {
+        const date = new Date(timestamp.seconds * 1000).toISOString().split("T")[0];
+        if (!dailyTotals[date]) dailyTotals[date] = 0;
+        dailyTotals[date] += amount;
+      });
+
+      const dates = Object.keys(dailyTotals).sort();
+      const values = dates.map(date => dailyTotals[date]);
+
+      if (lineChart) lineChart.destroy();
+      lineChart = new Chart(document.getElementById("lineChart"), {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: "Daily Total",
+            data: values,
+            fill: false,
+            borderColor: '#2196F3',
+            tension: 0.2
+          }]
+        }
+      });
+    }
+  </script>
+</body>
+</html>
