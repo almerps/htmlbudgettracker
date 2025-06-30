@@ -7,7 +7,7 @@
     body {
       font-family: Arial, sans-serif;
       background: #f4f4f4;
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
       padding: 20px;
     }
@@ -34,6 +34,17 @@
       border: none;
       border-radius: 5px;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th { background-color: #eee; }
     .income { color: green; }
     .expense { color: red; }
   </style>
@@ -50,6 +61,11 @@
   </div>
 
   <div id="mainApp" style="display:none;">
+    <div class="card">
+      <h3>📅 Filter by Month:</h3>
+      <select id="monthFilter"></select>
+    </div>
+
     <div class="card income-card">
       <h3>Add Income</h3>
       <form id="incomeForm">
@@ -83,9 +99,18 @@
     </div>
 
     <div class="card">
-      <h3>📅 Filter by Month:</h3>
-      <select id="monthFilter"></select>
-      <ul id="history"></ul>
+      <h3>🧾 Income Records</h3>
+      <table id="incomeTable">
+        <thead><tr><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>🧾 Expense Records</h3>
+      <table id="expenseTable">
+        <thead><tr><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
       <h3>📊 Total Balance: <span id="total">0</span></h3>
     </div>
 
@@ -119,8 +144,9 @@
       const logoutBtn = document.getElementById('logoutBtn');
       const mainApp = document.getElementById('mainApp');
       const monthFilter = document.getElementById('monthFilter');
-      const history = document.getElementById('history');
       const totalDisplay = document.getElementById('total');
+      const incomeTable = document.getElementById('incomeTable').querySelector('tbody');
+      const expenseTable = document.getElementById('expenseTable').querySelector('tbody');
 
       const incomeForm = document.getElementById('incomeForm');
       const expenseForm = document.getElementById('expenseForm');
@@ -201,18 +227,21 @@
           .where("timestamp", "<", end)
           .orderBy("timestamp", "asc")
           .onSnapshot(snapshot => {
-            history.innerHTML = "";
+            incomeTable.innerHTML = "";
+            expenseTable.innerHTML = "";
             let total = 0;
             const allData = [];
+
             snapshot.forEach(doc => {
               const d = doc.data();
               total += d.amount;
               allData.push(d);
-              const li = document.createElement("li");
-              li.className = d.amount >= 0 ? "income" : "expense";
-              li.textContent = `${d.desc} (${d.category}): ${d.amount >= 0 ? '+' : ''}${d.amount}`;
-              history.appendChild(li);
+              const tr = document.createElement("tr");
+              tr.innerHTML = `<td>${d.desc}</td><td>${d.category}</td><td>${d.amount}</td>`;
+              if (d.amount >= 0) incomeTable.appendChild(tr);
+              else expenseTable.appendChild(tr);
             });
+
             totalDisplay.textContent = total.toLocaleString();
             updateCategoryChart(allData);
             updateLineChart(allData);
