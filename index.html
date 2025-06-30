@@ -4,51 +4,147 @@
   <title>Budget Tracker</title>
   <meta charset="UTF-8" />
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      max-width: 900px;
+      margin: auto;
+      padding: 30px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .form-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .form-section > div {
+      flex: 1 1 45%;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .income-form button {
+      background-color: #2196F3;
+    }
+    .income-form button:hover {
+      background-color: #1e88e5;
+    }
+    .expense-form button {
+      background-color: #f44336;
+    }
+    .expense-form button:hover {
+      background-color: #e53935;
+    }
     .income { color: green; }
     .expense { color: red; }
-    input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+    canvas {
+      margin-top: 20px;
+    }
+    #history {
+      list-style-type: none;
+      padding: 0;
+    }
+    #history li {
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+    }
   </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
+  <!-- Firebase and Chart.js -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <h2>💰 Budget Tracker</h2>
 
-  <div id="authSection">
-    <button id="loginBtn">🔐 Login with Google</button>
-    <button id="logoutBtn" style="display:none;">🚪 Logout</button>
+  <div class="card">
+    <div id="authSection">
+      <button id="loginBtn">🔐 Login with Google</button>
+      <button id="logoutBtn" style="display:none;">🚪 Logout</button>
+    </div>
   </div>
 
   <div id="mainApp" style="display:none;">
-    <form id="entryForm">
-      <input id="desc" placeholder="Description" required />
-      <input id="amount" type="number" placeholder="Amount (+income, -expense)" required />
-      <select id="category" required>
-        <option value="">-- Choose Category --</option>
-        <option>Salary</option>
-        <option>Food</option>
-        <option>Transport</option>
-        <option>Shopping</option>
-        <option>Others</option>
-      </select>
-      <button type="submit">➕ Add Entry</button>
-    </form>
 
-    <h3>📅 Filter by Month:</h3>
-    <select id="monthFilter"></select>
+    <div class="card income-form">
+      <h3>➕ Add Income</h3>
+      <form id="incomeForm" class="form-section">
+        <div><input id="incomeDesc" placeholder="Description" required /></div>
+        <div><input id="incomeAmount" type="number" placeholder="Amount" required /></div>
+        <div><select id="incomeCategory" required>
+          <option value="">-- Choose Category --</option>
+          <option>Salary</option>
+          <option>Investment</option>
+          <option>Gift</option>
+          <option>Other Income</option>
+        </select></div>
+        <div><button type="submit">Add Income</button></div>
+      </form>
+    </div>
 
-    <ul id="history"></ul>
-    <h3>📊 Total Balance: <span id="total">0</span></h3>
+    <div class="card expense-form">
+      <h3>➖ Add Expense</h3>
+      <form id="expenseForm" class="form-section">
+        <div><input id="expenseDesc" placeholder="Description" required /></div>
+        <div><input id="expenseAmount" type="number" placeholder="Amount" required /></div>
+        <div><select id="expenseCategory" required>
+          <option value="">-- Choose Category --</option>
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Shopping</option>
+          <option>Other Expense</option>
+        </select></div>
+        <div><button type="submit">Add Expense</button></div>
+      </form>
+    </div>
 
-    <h3>🧁 Pie Chart (By Category)</h3>
-    <canvas id="categoryChart" height="200"></canvas>
+    <div class="card">
+      <h3>📅 Filter by Month:</h3>
+      <select id="monthFilter"></select>
+    </div>
 
-    <h3>📈 Line Chart (Daily Totals)</h3>
-    <canvas id="lineChart" height="200"></canvas>
+    <div class="card">
+      <h3>🧾 Transaction History</h3>
+      <ul id="history"></ul>
+      <h3>💼 Total Balance: <span id="total">0</span></h3>
+    </div>
+
+    <div class="card">
+      <h3>🧁 Pie Chart (By Category)</h3>
+      <canvas id="categoryChart" height="200"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>📈 Line Chart (Daily Totals)</h3>
+      <canvas id="lineChart" height="200"></canvas>
+    </div>
+
   </div>
 
   <script>
@@ -65,13 +161,12 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    const entryForm = document.getElementById('entryForm');
-    const history = document.getElementById('history');
-    const totalDisplay = document.getElementById('total');
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const mainApp = document.getElementById('mainApp');
     const monthFilter = document.getElementById('monthFilter');
+    const history = document.getElementById('history');
+    const totalDisplay = document.getElementById('total');
 
     let userId = null;
     let unsubscribe = null;
@@ -101,20 +196,24 @@
       }
     });
 
-    entryForm.addEventListener('submit', async (e) => {
+    document.getElementById("incomeForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const desc = document.getElementById("desc").value;
-      const amount = parseFloat(document.getElementById("amount").value);
-      const category = document.getElementById("category").value;
+      const desc = document.getElementById("incomeDesc").value;
+      const amount = parseFloat(document.getElementById("incomeAmount").value);
+      const category = document.getElementById("incomeCategory").value;
       if (!desc || isNaN(amount) || !category) return;
-      await db.collection("transactions").add({
-        userId,
-        desc,
-        amount,
-        category,
-        timestamp: new Date()
-      });
-      entryForm.reset();
+      await db.collection("transactions").add({ userId, desc, amount, category, timestamp: new Date() });
+      e.target.reset();
+    });
+
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const desc = document.getElementById("expenseDesc").value;
+      const amount = parseFloat(document.getElementById("expenseAmount").value);
+      const category = document.getElementById("expenseCategory").value;
+      if (!desc || isNaN(amount) || !category) return;
+      await db.collection("transactions").add({ userId, desc, amount: -Math.abs(amount), category, timestamp: new Date() });
+      e.target.reset();
     });
 
     function loadMonthFilter() {
@@ -129,7 +228,7 @@
       monthFilter.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     }
 
-    monthFilter.addEventListener('change', () => {
+    monthFilter.addEventListener("change", () => {
       if (unsubscribe) unsubscribe();
       listenToTransactions();
     });
