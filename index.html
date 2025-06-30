@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
 <head>
   <title>Budget Tracker</title>
@@ -9,10 +8,11 @@
     .expense { color: red; }
     input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
   </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ✅ Classic Firebase SDKs (NO MODULES) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <h2>💰 Budget Tracker</h2>
@@ -51,18 +51,17 @@
   </div>
 
   <script>
-    // Paste your Firebase config here
-	const firebaseConfig = {
-	  apiKey: "AIzaSyAXLjQptvknanK8CBKp7c23pIyeqZY_9ag",
-	  authDomain: "lazarius-ad2e6.firebaseapp.com",
-	  projectId: "lazarius-ad2e6",
-	  storageBucket: "lazarius-ad2e6.appspot.com",
-	  messagingSenderId: "615981652470",
-	  appId: "1:615981652470:web:fae653fc7d1e39e7e78fd7",
-	  measurementId: "G-XPSW6B6L5G"
-	};
+    // ✅ Your Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAXLjQptvknanK8CBKp7c23pIyeqZY_9ag",
+      authDomain: "lazarius-ad2e6.firebaseapp.com",
+      projectId: "lazarius-ad2e6",
+      storageBucket: "lazarius-ad2e6.appspot.com",
+      messagingSenderId: "615981652470",
+      appId: "1:615981652470:web:fae653fc7d1e39e7e78fd7"
+    };
 
-
+    // ✅ Firebase Init (NO module syntax)
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
@@ -80,12 +79,10 @@
     let pieChart = null;
     let lineChart = null;
 
-    // Login
     loginBtn.onclick = () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider);
     };
-
     logoutBtn.onclick = () => auth.signOut();
 
     auth.onAuthStateChanged(user => {
@@ -169,52 +166,5 @@
     function updateCategoryChart(data) {
       const categoryTotals = {};
       data.forEach(({ category, amount }) => {
-        if (!categoryTotals[category]) categoryTotals[category] = 0;
-        categoryTotals[category] += amount;
-      });
+        if (!categoryTo
 
-      const labels = Object.keys(categoryTotals);
-      const values = Object.values(categoryTotals);
-
-      if (pieChart) pieChart.destroy();
-      pieChart = new Chart(document.getElementById("categoryChart"), {
-        type: 'pie',
-        data: {
-          labels,
-          datasets: [{
-            data: values,
-            backgroundColor: ['#4CAF50', '#F44336', '#2196F3', '#FF9800', '#9C27B0']
-          }]
-        }
-      });
-    }
-
-    function updateLineChart(data) {
-      const dailyTotals = {};
-      data.forEach(({ timestamp, amount }) => {
-        const date = new Date(timestamp.seconds * 1000).toISOString().split("T")[0];
-        if (!dailyTotals[date]) dailyTotals[date] = 0;
-        dailyTotals[date] += amount;
-      });
-
-      const dates = Object.keys(dailyTotals).sort();
-      const values = dates.map(date => dailyTotals[date]);
-
-      if (lineChart) lineChart.destroy();
-      lineChart = new Chart(document.getElementById("lineChart"), {
-        type: 'line',
-        data: {
-          labels: dates,
-          datasets: [{
-            label: "Daily Total",
-            data: values,
-            fill: false,
-            borderColor: '#2196F3',
-            tension: 0.2
-          }]
-        }
-      });
-    }
-  </script>
-</body>
-</html>
